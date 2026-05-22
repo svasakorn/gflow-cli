@@ -622,8 +622,8 @@ class FlowApiClient:
         *,
         project_id: str,
         req: GenerateImageRequest,
-        seed: int,
-        batch_id: str,
+        seed: int,  # noqa: ARG002
+        batch_id: str,  # noqa: ARG002
         recaptcha_action: str,
     ) -> GeneratedImage:
         """Per-shot drive of one ``flowMedia:batchGenerateImages`` request.
@@ -653,9 +653,10 @@ class FlowApiClient:
         # Playwright Page + reCAPTCHA Enterprise script).
         token = await self._mint_recaptcha_token(recaptcha_action)
 
-        # `seed` + `batch_id` are reserved here for future extension; the
-        # strategy uses what's already on the request.
-        _ = seed, batch_id  # suppress unused-variable warnings
+        # `seed` + `batch_id` are reserved for future request enrichment; the
+        # strategy currently uses req/req_with_token directly. They are kept in
+        # the signature so callers can pass them without an API change when the
+        # body builder gains per-shot seed/batchId injection.
         req_with_token = _dc_replace(req, recaptcha_token=token)
         images = await self.transport.generate_images(
             project_id=project_id,
