@@ -55,7 +55,7 @@ Read the full [DISCLAIMER](DISCLAIMER.md) before deploying this in any productio
 
 ## Project status
 
-**v0.7.0 — first stable.** Image (T2I/I2I/upload), the **`gflow run` JSON-batch command**, and the **`ui_automation` default transport** are functional end-to-end against a live Google AI Pro/Ultra Flow account — every CLI aspect ratio (`9:16`, `16:9`, `1:1`, `4:3`, `3:4`) live-verified for v0.7.0 (see [`docs/LIVE_VERIFICATION_v0.7.0.md`](docs/LIVE_VERIFICATION_v0.7.0.md)). Video T2V works at the library level via `UiAutomationTransport.generate_video()`; CLI wiring for `gflow video t2v/i2v/batch` is queued for Phase B. Three earlier HTTP transport strategies (`evaluate_fetch` / `bearer` / `sapisidhash`) live in an `experimental/` subpackage; the production path is `ui_automation`.
+**v0.7.0 — first stable.** Image (T2I/I2I/upload), the **`gflow run` JSON-batch command**, and the **`ui_automation` default transport** are functional end-to-end against a live Google AI Pro/Ultra Flow account — every CLI aspect ratio (`9:16`, `16:9`, `1:1`, `4:3`, `3:4`) live-verified for v0.7.0 (see [`docs/LIVE_VERIFICATION_v0.7.0.md`](docs/LIVE_VERIFICATION_v0.7.0.md)). Video is CLI-wired end-to-end on `ui_automation`: `gflow video t2v` (text→video), `gflow video i2v` (start + optional end frame), and `gflow video r2v` (reference-to-video) all drive the editor and auto-download the mp4, with `--model` (5 Veo models), `--duration`, and `--count` flags. `gflow video batch` is the only video sub-command still pending. Three earlier HTTP transport strategies (`evaluate_fetch` / `bearer` / `sapisidhash`) live in an `experimental/` subpackage; the production path is `ui_automation`.
 
 | Milestone | Status |
 |---|---|
@@ -76,7 +76,11 @@ Read the full [DISCLAIMER](DISCLAIMER.md) before deploying this in any productio
 | Downstream-worker ergonomics (`out_dir`, `health_check()`, optional `project_id`, `BrowserSessionClosedError`) | ✅ done (v0.7.0) |
 | Signed-tag release verification + first stable (`v0.7.0`) | ✅ done (v0.7.0) |
 | `gflow video t2v` restored on `ui_automation` with first-class video download (#29) | ✅ done (Unreleased) |
-| `gflow video i2v` + `gflow video batch` on `ui_automation` | ⏳ Phase B |
+| `gflow video t2v` model picker (5 Veo models) + `--duration` / `--count` | ✅ done (Unreleased) |
+| `gflow video i2v` (start + optional end frame) on `ui_automation` | ✅ done (Unreleased) |
+| `gflow video r2v` (reference-to-video, model-aware ref cap omni≤7 / veo≤3) | ✅ done (Unreleased) |
+| `gflow image t2i/i2i --model` actually selects the model (was a no-op) | ✅ done (Unreleased) |
+| `gflow video batch` (TSV manifest) on `ui_automation` | ⏳ pending |
 | Provider abstraction for official Veo 3.1 API | ⏳ planned |
 
 ### What's new in v0.7.0
@@ -183,9 +187,12 @@ gflow video t2v "Slow cinematic push-in on a sunlit forest clearing" --aspect 16
 The image lands at `$GFLOW_CLI_OUTPUT_DIR/images/<YYYY-MM-DD>/<media_name>_1.png` (defaults to `./out/` when the env var is unset). See [docs/USAGE.md § `gflow image t2i`](docs/USAGE.md#gflow-image-t2i) for `--model`, `--aspect`, `-n/--count`, and `--out` flags. The video lands at `<out-dir>/<media_id>.mp4`.
 
 > **Video generation runs on the UI-automation transport.** The legacy HTTP
-> video path returned HTTP 401 and was retired. `gflow video t2v` is shipped
-> on the new transport (auto-downloads the mp4 via `media.getMediaUrlRedirect`);
-> `gflow video i2v` and `gflow video batch` follow in a later Phase B release.
+> video path returned HTTP 401 and was retired. `gflow video t2v`, `i2v`
+> (start + optional end frame), and `r2v` (reference-to-video) are all shipped
+> on the new transport (auto-download the mp4 via `media.getMediaUrlRedirect`);
+> `gflow video batch` is the only video sub-command still pending. Image inputs
+> bind through the editor's media dialog, and the editor is forced to English
+> (`--lang=en-US`) so the localized slot/dialog labels resolve.
 > See [`docs/LIVE_VERIFICATION_video_download.md`](docs/LIVE_VERIFICATION_video_download.md) for the live evidence and
 > `docs/superpowers/specs/2026-05-18-ui-automation-video-generation-design.md`
 > for the design.
@@ -204,10 +211,13 @@ gflow image t2i --prompts-file prompts.txt               # text-file multi-promp
 gflow image t2i --stdin                                  # stdin multi-prompt batch
 gflow image i2i "<prompt>" --ref PATH_OR_UUID [...]      # image-to-image (1–4 per call)
 
-gflow video t2v "<prompt>" [--aspect 9:16|16:9] [--out-dir DIR]   # text-to-video, auto-downloads mp4
-gflow video i2v <image> "<prompt>" -o out.mp4                    # image-to-video — returns in Phase B
-gflow video batch <manifest.tsv>                                 # TSV-driven batch — returns in Phase B
+gflow video t2v "<prompt>" [--model] [--duration] [--count] [--aspect]   # text-to-video, auto-downloads mp4
+gflow video i2v <image> "<prompt>" [--end-image LAST] [--model] [...]    # image-to-video (start + optional end frame)
+gflow video r2v "<prompt>" --ref IMG [--ref IMG ...]                     # reference-to-video (omni_flash ≤7, veo ≤3 refs)
+gflow video batch <manifest.tsv>                                         # TSV-driven batch — not yet available
 ```
+
+Video flags: `--model` (`omni-flash` | `veo-lite` | `veo-fast` | `veo-quality` | `veo-lite-lp`), `--duration` (`4`/`6`/`8`, plus `10` for `omni-flash`), `--count` (1–4), `--aspect` (`9:16` | `16:9`). Image flags: `--model` (`nano2` | `nano-pro` | `imagen4`), `--aspect` (5 ratios), `-n/--count` (1–4).
 
 Each command supports `--profile <name>` for managing multiple Google accounts side-by-side.
 
