@@ -850,7 +850,6 @@ class UiAutomationTransport(VideoGenerationMixin):
             return False
 
     @staticmethod
-    @staticmethod
     async def _select_image_model(page: Page, model: Model) -> None:
         """Click the image model picker and select `model` (Nano Banana 2 / Nano
         Banana Pro / Imagen 4). Must run with the gen-settings panel open. Without
@@ -1498,6 +1497,13 @@ class UiAutomationTransport(VideoGenerationMixin):
         await self._configure_generation_settings(
             page, aspect_cli, request.count, model=request.model
         )
+
+        # I2I: bind local reference images through the editor's media dialog —
+        # the same add_2 dialog as video R2V, via the inherited _attach_references.
+        # The REST uploadImage path 401s, and passive capture needs the refs IN
+        # the UI (not just a wire body), so we attach + let Flow's JS include them.
+        if request.ref_paths:
+            await self._attach_references(page, list(request.ref_paths), out_dir=out_dir)
 
         # Attach the response listener SYNCHRONOUSLY before any prompt
         # action. asyncio.create_task is unsafe here: it defers the listener
